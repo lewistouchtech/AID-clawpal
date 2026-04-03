@@ -155,10 +155,10 @@ class AIDLtdDashboardHandler(BaseHTTPRequestHandler):
                     # Professional oa-cli is available, get actual metrics
                     goals = self.parse_oa_status(result.stdout)
                 else:
-                    # Fallback to mock data
+                    # Fallback to mock data with openclaw-control-center integration
                     goals = self.get_mock_goals()
             except FileNotFoundError:
-                # Professional oa-cli not installed, use mock data
+                # Professional oa-cli not installed, use mock data with control-center integration
                 goals = self.get_mock_goals()
             
             self.send_response(200)
@@ -208,6 +208,31 @@ class AIDLtdDashboardHandler(BaseHTTPRequestHandler):
                         key, value = line.split(':', 1)
                         agent_info[key.strip()] = value.strip()
             
+            # Get session stats (from openclaw-control-center integration)
+            try:
+                sessions_result = subprocess.run(['openclaw', 'sessions', 'list', '--limit', '100'], 
+                                               capture_output=True, text=True, timeout=10)
+                session_count = len([l for l in sessions_result.stdout.split('\n') if l.strip()])
+            except:
+                session_count = 0
+            
+            # Get memory stats (Memory-Plus integration)
+            try:
+                import sys
+                sys.path.insert(0, str(Path(__file__).parent.parent / 'workspace' / 'memory-plus'))
+                from core.mem0_integration import Mem0Integration
+                mem0 = Mem0Integration()
+                health = mem0.health_check()
+                memory_stats = {
+                    'total_memories': health.get('total_memories', 0),
+                    'l1_count': health.get('l1_count', 0),
+                    'l2_count': health.get('l2_count', 0),
+                    'l3_count': health.get('l3_count', 0),
+                    'fts_status': health.get('fts_status', 'unknown')
+                }
+            except:
+                memory_stats = {'total_memories': 0, 'l1_count': 0, 'l2_count': 0, 'l3_count': 0}
+            
             stats = {
                 'total_tasks': pending_count + in_progress_count + completed_count + failed_count,
                 'pending_tasks': pending_count,
@@ -217,7 +242,9 @@ class AIDLtdDashboardHandler(BaseHTTPRequestHandler):
                 'total_agents': int(agent_info.get('Total agents', 0)),
                 'active_agents': int(agent_info.get('Active agents', 0)),
                 'inactive_agents': int(agent_info.get('Inactive agents', 0)),
-                'healthy_goals': 2  # Mock value
+                'healthy_goals': 2,  # Mock value
+                'total_sessions': session_count,
+                'memory_stats': memory_stats
             }
             
             self.send_response(200)
@@ -441,7 +468,7 @@ class AIDLtdDashboardHandler(BaseHTTPRequestHandler):
                     '活跃协作数': {'value': 2, 'unit': '个', 'trend': 0}
                 }
             },
-            # 内存系统状态
+            # 内存系统状态 (Memory-Plus)
             {
                 'id': 'memory_system',
                 'name': '内存系统状态',
@@ -451,6 +478,30 @@ class AIDLtdDashboardHandler(BaseHTTPRequestHandler):
                     'L2 工作记忆': {'value': '健康', 'unit': '', 'trend': 0},
                     'L3 长期记忆': {'value': '健康', 'unit': '', 'trend': 0},
                     'Memory-Plus MCP': {'value': '已部署', 'unit': '', 'trend': 0}
+                }
+            },
+            # OpenClaw Control Center 指标
+            {
+                'id': 'control_center',
+                'name': 'OpenClaw 控制中⼼',
+                'healthStatus': 'healthy',
+                'metrics': {
+                    '会话总数': {'value': 22, 'unit': '个', 'trend': 3},
+                    '活跃会话': {'value': 1, 'unit': '个', 'trend': 0},
+                    '上下⽂压⼒': {'value': 45, 'unit': '%', 'trend': -5},
+                    'Token 消耗': {'value': 125000, 'unit': '/天', 'trend': 10}
+                }
+            },
+            # 系统资源监控
+            {
+                'id': 'system_resources',
+                'name': '系统资源监控',
+                'healthStatus': 'healthy',
+                'metrics': {
+                    'CPU 使用率': {'value': 35, 'unit': '%', 'trend': 2},
+                    '内存使用': {'value': 5.6, 'unit': 'GB', 'trend': 0},
+                    '磁盘空间': {'value': 180, 'unit': 'GB', 'trend': -2},
+                    '网络延迟': {'value': 15, 'unit': 'ms', 'trend': 0}
                 }
             }
         ]
