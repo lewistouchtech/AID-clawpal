@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内存系统监控 - AID 看板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+        
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .layer-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .layer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .layer-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .layer-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .badge-l1 {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .badge-l2 {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .badge-l3 {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+        
+        .progress-bar {
+            height: 24px;
+            background: #f0f0f0;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .layer-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .layer-stat {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .layer-stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 5px;
+        }
+        
+        .layer-stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .health-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .health-good {
+            background: #4caf50;
+        }
+        
+        .health-warning {
+            background: #ff9800;
+        }
+        
+        .health-critical {
+            background: #f44336;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .refresh-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .last-update {
+            text-align: right;
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 内存系统监控</h1>
+            <p>Memory-Plus L1/L2/L3 分层存储健康状态</p>
+        </div>
+        
+        <!-- 总览统计 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="total-memories">0</div>
+                <div class="stat-label">总记忆数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔥</div>
+                <div class="stat-value" id="l1-count">0</div>
+                <div class="stat-label">L1 热记忆 (0-7 天)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💧</div>
+                <div class="stat-value" id="l2-count">0</div>
+                <div class="stat-label">L2 温记忆 (7-30 天)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">❄️</div>
+                <div class="stat-value" id="l3-count">0</div>
+                <div class="stat-label">L3 冷记忆 (30+ 天)</div>
+            </div>
+        </div>
+        
+        <!-- L1 层 -->
+        <div class="layer-section">
+            <div class="layer-header">
+                <div class="layer-title">🔥 L1 热存储 (Hot Memory)</div>
+                <span class="layer-badge badge-l1">0-7 天</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="l1-progress" style="width: 0%">0%</div>
+            </div>
+            <div class="layer-stats">
+                <div class="layer-stat">
+                    <div class="layer-stat-value" id="l1-storage">0 MB</div>
+                    <div class="layer-stat-label">存储空间</div>
+                </div>
+                <div class="layer-stat">
+                    <div class="layer-stat-value" id="l1-avg-access">0ms</div>
+                    <div class="layer-stat-label">平均访问</div>
+                </div>
+                <div class="layer-stat">
+                    <div class="layer-stat-value" id="l1-migrations">0</div>
+                    <div class="layer-stat-label">待迁移</div>
+                </div>
+                <div class="layer-stat">
+                    <div class="layer-stat-value">
+                        <span class="health-indicator health-good"></span>健康
+                    </div>
+                    <div class="layer-stat-label">系统状态</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- L2 层 -->
+        <div class="layer-section">
+            <div class="layer-header">
+                <div class="layer-title">💧 L2 温存储 (Warm Memory)</div>
+                <span class="layer-badge badge-l2">7-30 天</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="l2-progress" style="width: 0%">0%</div>
+            </div>
+            <div class="layer-stats">
+                <div class="layer-stat">
+                    <div class="layer-stat-value" id="l2-storage">0 MB</div>
+                    <div class="layer-stat-label">存储空间</div>
+                </div>
+                <div class="layer-stat">
+                    <div class="layer-stat-value" id="l2-avg-access">0ms</div>
+                    <div class="layer-stat-label">平均访问</div>
+                </div>
+                <div class="layer-stat">
+                    <div class="layer-stat-value" id="l2-migrations">0</div>
+                    <div class="layer-stat-label">待迁移</div>
+                </div>
+                <div class="layer-stat">
+                    <div class="layer-stat-value">
+                        <span class="health-indicator health-good"></span>健康
+                    </div>
+                    <div class="layer-stat-label">系统状态</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- L3 层 -->
+        <div class="layer-section">
+            <div class="layer-header">
+                <div class="layer-title">❄️ L3 冷存储 (Cold Memory)</div>
+                <span class="layer-badge badge-l3">30+ 天</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="l3-progress" style="width: 0%">0%</div>
+            </div>
+            <div class="layer-stats">
+                <div class="layer-stat">
+                    <div class="layer-stat-value" id="l3-storage">0 MB</div>
+                    <div class="layer-stat-label">存储空间</div>
+                </div>
+                <div class="layer-stat">
+                    <div class="layer-stat-value" id="l3-avg-access">0ms</div>
+                    <div class="layer-stat-label">平均访问</div>
+                </div>
+                <div class="layer-stat">
+                    <div class="layer-stat-value" id="l3-archives">0</div>
+                    <div class="layer-stat-label">归档文件</div>
+                </div>
+                <div class="layer-stat">
+                    <div class="layer-stat-value">
+                        <span class="health-indicator health-good"></span>健康
+                    </div>
+                    <div class="layer-stat-label">系统状态</div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="refresh-btn" onclick="refreshData()">🔄 刷新数据</button>
+        <div class="last-update" id="last-update">最后更新：从未</div>
+    </div>
+    
+    <script>
+        // 模拟数据（实际应从 API 获取）
+        let memoryStats = {
+            total: 2766,
+            l1: { count: 1850, storage: 125, avgAccess: 45, migrations: 12 },
+            l2: { count: 756, storage: 380, avgAccess: 120, migrations: 5 },
+            l3: { count: 160, storage: 890, avgAccess: 350, archives: 160 }
+        };
+        
+        function updateDisplay() {
+            // 更新总览
+            document.getElementById('total-memories').textContent = memoryStats.total.toLocaleString();
+            document.getElementById('l1-count').textContent = memoryStats.l1.count.toLocaleString();
+            document.getElementById('l2-count').textContent = memoryStats.l2.count.toLocaleString();
+            document.getElementById('l3-count').textContent = memoryStats.l3.count.toLocaleString();
+            
+            // 计算百分比
+            const l1Percent = ((memoryStats.l1.count / memoryStats.total) * 100).toFixed(1);
+            const l2Percent = ((memoryStats.l2.count / memoryStats.total) * 100).toFixed(1);
+            const l3Percent = ((memoryStats.l3.count / memoryStats.total) * 100).toFixed(1);
+            
+            // 更新进度条
+            document.getElementById('l1-progress').style.width = l1Percent + '%';
+            document.getElementById('l1-progress').textContent = l1Percent + '%';
+            document.getElementById('l2-progress').style.width = l2Percent + '%';
+            document.getElementById('l2-progress').textContent = l2Percent + '%';
+            document.getElementById('l3-progress').style.width = l3Percent + '%';
+            document.getElementById('l3-progress').textContent = l3Percent + '%';
+            
+            // 更新详细统计
+            document.getElementById('l1-storage').textContent = memoryStats.l1.storage + ' MB';
+            document.getElementById('l1-avg-access').textContent = memoryStats.l1.avgAccess + 'ms';
+            document.getElementById('l1-migrations').textContent = memoryStats.l1.migrations;
+            
+            document.getElementById('l2-storage').textContent = memoryStats.l2.storage + ' MB';
+            document.getElementById('l2-avg-access').textContent = memoryStats.l2.avgAccess + 'ms';
+            document.getElementById('l2-migrations').textContent = memoryStats.l2.migrations;
+            
+            document.getElementById('l3-storage').textContent = memoryStats.l3.storage + ' MB';
+            document.getElementById('l3-avg-access').textContent = memoryStats.l3.avgAccess + 'ms';
+            document.getElementById('l3-archives').textContent = memoryStats.l3.archives;
+            
+            // 更新时间
+            const now = new Date();
+            document.getElementById('last-update').textContent = 
+                '最后更新：' + now.toLocaleString('zh-CN');
+        }
+        
+        function refreshData() {
+            // 实际应从 API 获取：fetch('/api/memory-health')
+            // 这里模拟数据更新
+            memoryStats.l1.count = Math.floor(Math.random() * 100) + 1800;
+            memoryStats.l2.count = Math.floor(Math.random() * 50) + 750;
+            memoryStats.l3.count = Math.floor(Math.random() * 20) + 150;
+            memoryStats.total = memoryStats.l1.count + memoryStats.l2.count + memoryStats.l3.count;
+            
+            updateDisplay();
+        }
+        
+        // 初始加载
+        updateDisplay();
+        
+        // 自动刷新（30 秒）
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>
