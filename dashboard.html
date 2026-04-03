@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AID Ltd. 任务看板</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1976d2;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+        .kanban-board {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+        .column {
+            min-width: 300px;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .column-header {
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        .task-card {
+            background: #fafafa;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .task-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .task-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .task-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+        }
+        .task-tags {
+            margin-top: 8px;
+        }
+        .tag {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-right: 4px;
+        }
+        .subtasks {
+            margin-top: 8px;
+            padding-left: 15px;
+            border-left: 2px solid #ddd;
+        }
+        .subtask-item {
+            font-size: 12px;
+            margin: 3px 0;
+            color: #555;
+        }
+        .subtask-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-pending { background-color: #ccc; }
+        .status-in-progress { background-color: #2196F3; }
+        .status-completed { background-color: #4CAF50; }
+        .status-failed { background-color: #f44336; }
+        
+        /* Comments section */
+        .comments-section {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #ddd;
+        }
+        .comments-list {
+            max-height: 100px;
+            overflow-y: auto;
+            margin-bottom: 8px;
+        }
+        .comment-item {
+            padding: 5px 0;
+            border-bottom: 1px dashed #eee;
+        }
+        .comment-header {
+            font-size: 12px;
+            color: #666;
+        }
+        .comment-author {
+            font-weight: bold;
+        }
+        .comment-time {
+            float: right;
+        }
+        .comment-content {
+            font-size: 13px;
+            margin: 3px 0;
+        }
+        .add-comment {
+            margin-top: 10px;
+        }
+        .comment-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            resize: vertical;
+            height: 40px;
+        }
+        .add-comment-btn {
+            margin-top: 5px;
+            padding: 5px 10px;
+            font-size: 12px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        /* Goals section */
+        .goals-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .goal-card {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .goal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .goal-name {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .goal-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-healthy { background-color: #e8f5e8; color: #2e7d32; }
+        .status-warning { background-color: #fff8e1; color: #f57f17; }
+        .status-critical { background-color: #ffebee; color: #c62828; }
+        .goal-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .metric-item {
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .metric-name {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .metric-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .metric-trend {
+            font-size: 12px;
+            color: #666;
+        }
+        .trend-up { color: #4CAF50; }
+        .trend-down { color: #f44336; }
+        
+        /* Agents section */
+        .agents-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .agent-card {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 15px;
+        }
+        .agent-name {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .agent-status {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .status-active { background-color: #e8f5e8; color: #2e7d32; }
+        .status-inactive { background-color: #ffebee; color: #c62828; }
+        .status-unknown { background-color: #fff3e0; color: #ef6c00; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AID Ltd. 任务看板</h1>
+            <p>实时任务管理和代理监控系统</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-number" id="total-tasks">0</div>
+                <div class="stat-label">总任务数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="active-agents">0</div>
+                <div class="stat-label">活跃代理</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="total-agents">0</div>
+                <div class="stat-label">总代理数</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="healthy-goals">0</div>
+                <div class="stat-label">健康目标</div>
+            </div>
+        </div>
+        
+        <!-- Goals Section -->
+        <div class="goals-section">
+            <h2>系统健康指标</h2>
+            <div id="goals-container"></div>
+        </div>
+        
+        <!-- Tasks Section -->
+        <div class="kanban-board">
+            <div class="column">
+                <div class="column-header">待办 (Pending)</div>
+                <div id="pending-column"></div>
+            </div>
+            <div class="column">
+                <div class="column-header">进行中 (In Progress)</div>
+                <div id="in-progress-column"></div>
+            </div>
+            <div class="column">
+                <div class="column-header">已完成 (Completed)</div>
+                <div id="completed-column"></div>
+            </div>
+            <div class="column">
+                <div class="column-header">已失败 (Failed)</div>
+                <div id="failed-column"></div>
+            </div>
+        </div>
+        
+        <!-- Agents Section -->
+        <div class="agents-section">
+            <h2>代理状态</h2>
+            <div class="agent-grid" id="agents-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global data storage
+        let tasks = [];
+        let agents = [];
+        let goals = [];
+        let stats = {};
+
+        async function fetchTasks() {
+            try {
+                const response = await fetch('/api/tasks');
+                tasks = await response.json();
+                renderTasks();
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+            }
+        }
+        
+        async function fetchAgents() {
+            try {
+                const response = await fetch('/api/agents');
+                agents = await response.json();
+                renderAgents();
+            } catch (error) {
+                console.error('Error fetching agents:', error);
+            }
+        }
+        
+        async function fetchGoals() {
+            try {
+                const response = await fetch('/api/goals');
+                goals = await response.json();
+                renderGoals();
+            } catch (error) {
+                console.error('Error fetching goals:', error);
+            }
+        }
+        
+        async function fetchStats() {
+            try {
+                const response = await fetch('/api/stats');
+                stats = await response.json();
+                updateStats();
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+        
+        function renderTasks() {
+            // Clear all columns
+            document.querySelectorAll('.column div').forEach(col => {
+                col.innerHTML = '';
+            });
+            
+            // Count tasks
+            const counts = { pending: 0, in_progress: 0, completed: 0, failed: 0 };
+            
+            tasks.forEach(task => {
+                counts[task.status]++;
+                
+                const taskCard = document.createElement('div');
+                taskCard.className = 'task-card';
+                taskCard.innerHTML = `
+                    <div class="task-title">${task.title}</div>
+                    <div class="task-description">${task.description}</div>
+                    <div class="task-meta">
+                        <span>ID: ${task.id}</span>
+                        <span>优先级: ${task.priority}</span>
+                    </div>
+                    <div class="task-tags">
+                        ${task.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                    ${task.subtasks && task.subtasks.length > 0 ? `
+                    <div class="subtasks">
+                        <strong>子任务 (${task.subtasks.length}):</strong>
+                        ${task.subtasks.map(subtask => `
+                        <div class="subtask-item">
+                            <span class="subtask-status status-${subtask.status}"></span>
+                            ${subtask.title} (${subtask.status})
+                        </div>`).join('')}
+                    </div>` : ''}
+                    
+                    <!-- 评论区域 -->
+                    <div class="comments-section">
+                        <h4 style="margin: 10px 0 5px 0; font-size: 14px;">任务评论</h4>
+                        <div class="comments-list">
+                            ${(task.comments && task.comments.length > 0) ? 
+                                task.comments.map(comment => `
+                                    <div class="comment-item" style="padding: 5px 0; border-bottom: 1px dashed #eee;">
+                                        <div class="comment-header" style="font-size: 12px; color: #666;">
+                                            <span class="comment-author">${comment.author}</span>
+                                            <span class="comment-time" style="float: right;">${comment.timestamp}</span>
+                                        </div>
+                                        <div class="comment-content" style="font-size: 13px; margin: 3px 0;">${comment.content}</div>
+                                    </div>
+                                `).join('') : 
+                                '<p class="no-comments" style="font-size: 12px; color: #999; margin: 5px 0;">暂无评论</p>'
+                            }
+                        </div>
+                        <div class="add-comment" style="margin-top: 10px;">
+                            <textarea class="comment-input" placeholder="添加评论..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; resize: vertical; height: 40px;"></textarea>
+                            <button class="add-comment-btn" onclick="addComment('${task.id}', this)" style="margin-top: 5px; padding: 5px 10px; font-size: 12px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">添加评论</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById(`${task.status.replace('_', '-')}-column`).appendChild(taskCard);
+            });
+            
+            // Update stats
+            document.getElementById('total-tasks').textContent = tasks.length;
+        }
+        
+        function renderAgents() {
+            const container = document.getElementById('agents-container');
+            container.innerHTML = '';
+            
+            agents.forEach(agent => {
+                const agentCard = document.createElement('div');
+                agentCard.className = 'agent-card';
+                
+                // 使用 original_status 判断样式，支持中文状态显示
+                let statusClass = 'status-unknown';
+                const originalStatus = (agent.original_status || agent.status).toLowerCase();
+                
+                if (originalStatus.includes('active') || originalStatus.includes('running') || originalStatus.includes('运行中') || originalStatus.includes('活跃')) {
+                    statusClass = 'status-active';
+                } else if (originalStatus.includes('idle') || originalStatus.includes('空闲') || originalStatus.includes('忙碌')) {
+                    statusClass = 'status-idle';
+                } else if (originalStatus.includes('inactive') || originalStatus.includes('stopped') || originalStatus.includes('已停止') || originalStatus.includes('未激活')) {
+                    statusClass = 'status-inactive';
+                }
+                
+                agentCard.innerHTML = `
+                    <div class="agent-name">${agent.name || '未知代理'}</div>
+                    <div class="agent-path">${agent.path || 'N/A'}</div>
+                    <div class="agent-status ${statusClass}">${agent.status}</div>
+                `;
+                
+                container.appendChild(agentCard);
+            });
+        }
+        
+        function renderGoals() {
+            const container = document.getElementById('goals-container');
+            container.innerHTML = '';
+            
+            goals.forEach(goal => {
+                const goalCard = document.createElement('div');
+                goalCard.className = 'goal-card';
+                
+                // Determine status class based on goal health
+                let statusClass = 'status-unknown';
+                if (goal.healthStatus === 'healthy') {
+                    statusClass = 'status-healthy';
+                } else if (goal.healthStatus === 'warning') {
+                    statusClass = 'status-warning';
+                } else if (goal.healthStatus === 'critical') {
+                    statusClass = 'status-critical';
+                }
+                
+                // Build metrics HTML
+                let metricsHtml = '';
+                if (goal.metrics) {
+                    metricsHtml = '<div class="goal-metrics">';
+                    for (const [metricName, metricData] of Object.entries(goal.metrics)) {
+                        const trendClass = metricData.trend !== undefined ? 
+                            (metricData.trend >= 0 ? 'trend-up' : 'trend-down') : '';
+                        const trendSymbol = metricData.trend !== undefined ? 
+                            (metricData.trend >= 0 ? '↑' : '↓') : '';
+                        
+                        metricsHtml += `
+                            <div class="metric-item">
+                                <div class="metric-name">${metricName}</div>
+                                <div class="metric-value">${metricData.value}${metricData.unit}</div>
+                                <div class="metric-trend ${trendClass}">${trendSymbol} ${metricData.trend !== undefined ? Math.abs(metricData.trend) : ''}</div>
+                            </div>
+                        `;
+                    }
+                    metricsHtml += '</div>';
+                }
+                
+                goalCard.innerHTML = `
+                    <div class="goal-header">
+                        <div class="goal-name">${goal.name}</div>
+                        <div class="goal-status ${statusClass}">${goal.healthStatus}</div>
+                    </div>
+                    ${metricsHtml}
+                `;
+                
+                container.appendChild(goalCard);
+            });
+        }
+        
+        function updateStats() {
+            document.getElementById('total-tasks').textContent = stats.total_tasks || 0;
+            document.getElementById('active-agents').textContent = stats.active_agents || 0;
+            document.getElementById('total-agents').textContent = stats.total_agents || 0;
+            document.getElementById('healthy-goals').textContent = stats.healthy_goals || 0;
+        }
+
+        // 添加评论功能
+        async function addComment(taskId, buttonElement) {
+            const textarea = buttonElement.previousElementSibling;
+            const content = textarea.value.trim();
+            
+            if (!content) {
+                alert('请输入评论内容');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/tasks/${taskId}/comment`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        author: 'user',
+                        timestamp: new Date().toLocaleString()
+                    })
+                });
+                
+                if (response.ok) {
+                    textarea.value = '';
+                    // 重新加载任务以显示新评论
+                    fetchTasks();
+                } else {
+                    alert('添加评论失败');
+                }
+            } catch (error) {
+                console.error('Error adding comment:', error);
+                alert('添加评论时发生错误');
+            }
+        }
+
+        // Initial load
+        fetchTasks();
+        fetchAgents();
+        fetchGoals();
+        fetchStats();
+        
+        // Live updates every 30 seconds
+        setInterval(() => {
+            fetchTasks();
+            fetchAgents();
+            fetchGoals();
+            fetchStats();
+        }, 30000);
+    </script>
+</body>
+</html>
